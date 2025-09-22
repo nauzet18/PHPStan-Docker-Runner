@@ -1,0 +1,114 @@
+{
+  "name": "phpstan-docker-runner",
+  "displayName": "PHPStan Docker Runner",
+  "description": "Ejecuta PHPStan en un contenedor Docker usando Docker Compose",
+  "version": "1.0.0",
+  "publisher": "Nauzet18",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nauzet18/phpstan-docker-runner.git"
+  },
+  "homepage": "https://github.com/Nauzet18/phpstan-docker-runner#readme",
+  "bugs": {
+    "url": "https://github.com/Nauzet18/phpstan-docker-runner/issues"
+  },
+  "keywords": [
+    "phpstan",
+    "docker",
+    "php",
+    "linter",
+    "static-analysis"
+  ],
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:phpstan-docker-runner.runPhpstan",
+    "onLanguage:php"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "phpstan-docker-runner.runPhpstan",
+        "title": "Ejecutar PHPStan en Docker",
+        "category": "PHPStan"
+      },
+      {
+        "command": "phpstan-docker-runner.runPhpstanFile",
+        "title": "Ejecutar PHPStan en archivo actual",
+        "category": "PHPStan"
+      },
+      {
+        "command": "phpstan-docker-runner.runPhpstanDirectory",
+        "title": "Ejecutar PHPStan en directorio actual",
+        "category": "PHPStan"
+      }
+    ],
+    "configuration": {
+      "title": "PHPStan Docker Runner",
+      "properties": {
+        "phpstan-docker-runner.containerName": {
+          "type": "string",
+          "default": "nsign-v3",
+          "description": "Nombre del contenedor Docker donde está PHPStan"
+        },
+        "phpstan-docker-runner.workDirectory": {
+          "type": "string",
+          "default": "/netip/code", 
+          "description": "Directorio de trabajo dentro del contenedor"
+        },
+        "phpstan-docker-runner.configFile": {
+          "type": "string",
+          "default": "phpstan.neon",
+          "description": "Archivo de configuración de PHPStan"
+        },
+        "phpstan-docker-runner.level": {
+          "type": "string",
+          "default": "5",
+          "description": "Nivel de análisis de PHPStan (0-9)"
+        },
+        "phpstan-docker-runner.autoRun": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ejecutar PHPStan automáticamente al guardar archivos PHP"
+        },
+        "phpstan-docker-runner.phpstanPath": {
+          "type": "string",
+          "default": "vendor/bin/phpstan",
+          "description": "Ruta del ejecutable de PHPStan dentro del contenedor"
+        }
+      }
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "phpstan-docker-runner.runPhpstanDirectory",
+          "when": "resourceExtname == '.php'",
+          "group": "phpstan"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "phpstan-docker-runner.runPhpstanFile",
+          "when": "resourceExtname == '.php'",
+          "group": "phpstan"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "typescript": "^4.9.4"
+  }
+}
