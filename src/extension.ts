@@ -130,8 +130,8 @@ async function runPhpstan(targetPath?: string): Promise<void> {
 
                 progress.report({ increment: 100, message: "Procesando resultados..." });
 
-                // Procesar la salida de PHPStan
-                await processPhpstanOutput(stdout, stderr, workspaceRoot, workDirectory);
+                // Procesar la salida de PHPStan, pasando targetPath
+                await processPhpstanOutput(stdout, stderr, workspaceRoot, workDirectory, targetPath);
 
             } catch (error: any) {
                 // Mostrar la salida en el OutputChannel personalizado también en caso de error
@@ -147,7 +147,7 @@ async function runPhpstan(targetPath?: string): Promise<void> {
 
                 if (error.code === 1) {
                     // PHPStan encontró errores (código de salida 1)
-                    await processPhpstanOutput(error.stdout || '', error.stderr || '', workspaceRoot, workDirectory);
+                    await processPhpstanOutput(error.stdout || '', error.stderr || '', workspaceRoot, workDirectory, targetPath);
                 } else {
                     throw error;
                 }
@@ -160,12 +160,17 @@ async function runPhpstan(targetPath?: string): Promise<void> {
     }
 }
 
-async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoot: string, workDirectory: string): Promise<void> {
+async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoot: string, workDirectory: string, targetPath?: string): Promise<void> {
     const diagnostics: { [file: string]: vscode.Diagnostic[] } = {};
 
     // Parsear la salida de PHPStan
     const lines = stdout.split('\n');
     let currentFile = '';
+    // Si el análisis se ha lanzado sobre un archivo concreto, usarlo directamente
+    let knownFilePath: string | undefined;
+    if (targetPath && typeof targetPath === 'string' && targetPath.endsWith('.php') && fs.existsSync(targetPath)) {
+        knownFilePath = targetPath;
+    }
 
     for (const line of lines) {
         if (line.trim() === '') continue;
@@ -202,8 +207,10 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
                 let containerFilePath = fileMatch[1];
                 let resolvedPath = '';
 
-                // Si la ruta es absoluta y existe, usarla directamente
-                if (path.isAbsolute(containerFilePath) && fs.existsSync(containerFilePath)) {
+                // Si tenemos la ruta conocida (comando sobre archivo actual), usarla directamente
+                if (knownFilePath) {
+                    resolvedPath = knownFilePath;
+                } else if (path.isAbsolute(containerFilePath) && fs.existsSync(containerFilePath)) {
                     resolvedPath = containerFilePath;
                 } else {
                     // Si la ruta empieza por el workDirectory, construir la ruta relativa
