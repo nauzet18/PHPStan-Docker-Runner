@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
@@ -58,6 +58,7 @@ async function runPhpstan(targetPath?: string): Promise<void> {
     try {
         const config = vscode.workspace.getConfiguration('phpstan-docker-runner');
         const containerName = config.get<string>('containerName', 'phpstan');
+        const showTerminal = config.get<boolean>('showTerminal', true);
         const workDirectory = config.get<string>('workDirectory', '/var/www/html');
         const configFile = config.get<string>('configFile', 'phpstan.neon');
         const level = config.get<string>('level', '5');
@@ -99,9 +100,20 @@ async function runPhpstan(targetPath?: string): Promise<void> {
             // Comando Docker exec
             const dockerCommand = `docker exec ${containerName} ${phpstanCommand}`;
 
-            progress.report({ increment: 50, message: "Ejecutando análisis..." });
+            progress.report({ increment: 30, message: "Lanzando ejecución..." });
+
+            // Si showTerminal está activo, abrimos una terminal integrada con salida en tiempo real
+            let terminal: vscode.Terminal | undefined;
+            if (showTerminal) {
+                terminal = vscode.window.createTerminal({ name: 'PHPStan (Docker)' });
+                terminal.show(true);
+                terminal.sendText(dockerCommand, true);
+            }
+
+            progress.report({ increment: 50, message: "Analizando y recopilando diagnósticos..." });
 
             try {
+                // Ejecutamos en paralelo otra llamada con salida capturable para diagnósticos
                 const { stdout, stderr } = await execAsync(dockerCommand, {
                     cwd: workspaceRoot,
                     timeout: 300000 // 5 minutos timeout
