@@ -225,7 +225,7 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
                     if (!fs.existsSync(resolvedPath)) {
                         // Buscar el archivo por nombre en el workspace
                         const fileName = path.basename(containerFilePath);
-                        const found = findFileInWorkspace(workspaceRoot, fileName);
+                        const found = findFileInWorkspace(workspaceRoot, fileName, targetPath);
                         if (found) {
                             resolvedPath = found;
                         }
@@ -236,9 +236,13 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
         }
     }
 
-    // Función auxiliar para buscar el archivo por nombre en el workspace
-    function findFileInWorkspace(root: string, fileName: string): string | undefined {
-        const stack = [root];
+    // Función auxiliar para buscar el archivo por nombre en el workspace o en el targetPath si es directorio
+    function findFileInWorkspace(root: string, fileName: string, searchDir?: string): string | undefined {
+        let searchRoot = root;
+        if (searchDir && fs.existsSync(searchDir) && fs.statSync(searchDir).isDirectory()) {
+            searchRoot = searchDir;
+        }
+        const stack = [searchRoot];
         while (stack.length) {
             const dir = stack.pop();
             if (!dir) continue;
