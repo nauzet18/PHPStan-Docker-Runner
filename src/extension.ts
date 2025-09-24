@@ -63,7 +63,6 @@ async function runPhpstan(targetPath?: string): Promise<void> {
     try {
         const config = vscode.workspace.getConfiguration('phpstan-docker-runner');
         const containerName = config.get<string>('containerName', 'phpstan');
-        const showTerminal = config.get<boolean>('showTerminal', true);
         const workDirectory = config.get<string>('workDirectory', '/var/www/html');
         const configFile = config.get<string>('configFile', 'phpstan.neon');
         const level = config.get<string>('level', '5');
