@@ -107,13 +107,7 @@ async function runPhpstan(targetPath?: string): Promise<void> {
 
             progress.report({ increment: 30, message: "Lanzando ejecución..." });
 
-            // Si showTerminal está activo, abrimos una terminal integrada con salida en tiempo real
-            let terminal: vscode.Terminal | undefined;
-            if (showTerminal) {
-                terminal = vscode.window.createTerminal({ name: 'PHPStan (Docker)' });
-                terminal.show(true);
-                terminal.sendText(dockerCommand, true);
-            }
+            // Ya no se crea una terminal integrada, la salida va solo al OutputChannel
 
             progress.report({ increment: 50, message: "Analizando y recopilando diagnósticos..." });
 
