@@ -1,8 +1,9 @@
 {
   "name": "phpstan-docker-runner",
+  "icon": "icon.png",
   "displayName": "PHPStan Docker Runner",
   "description": "Ejecuta PHPStan en un contenedor Docker usando Docker Compose",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "publisher": "Nauzet18",
   "repository": {
     "type": "git",
