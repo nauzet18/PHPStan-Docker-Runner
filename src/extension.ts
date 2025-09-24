@@ -166,7 +166,7 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
     // Parsear la salida de PHPStan
     const lines = stdout.split('\n');
     let currentFile = '';
-    
+
     for (const line of lines) {
         if (line.trim() === '') continue;
 
@@ -199,16 +199,53 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
             // Es un archivo PHP - convertir ruta del contenedor a ruta local
             const fileMatch = line.match(/([^\s]+\.php)/);
             if (fileMatch) {
-                const containerFilePath = fileMatch[1];
-                // Convertir ruta del contenedor a ruta local
-                if (containerFilePath.startsWith(workDirectory)) {
-                    const relativePath = containerFilePath.substring(workDirectory.length).replace(/^\//, '');
-                    currentFile = path.resolve(workspaceRoot, relativePath);
+                let containerFilePath = fileMatch[1];
+                let resolvedPath = '';
+
+                // Si la ruta es absoluta y existe, usarla directamente
+                if (path.isAbsolute(containerFilePath) && fs.existsSync(containerFilePath)) {
+                    resolvedPath = containerFilePath;
                 } else {
-                    currentFile = path.resolve(workspaceRoot, containerFilePath);
+                    // Si la ruta empieza por el workDirectory, construir la ruta relativa
+                    if (containerFilePath.startsWith(workDirectory)) {
+                        const relativePath = containerFilePath.substring(workDirectory.length).replace(/^\//, '');
+                        resolvedPath = path.resolve(workspaceRoot, relativePath);
+                    } else {
+                        // Si no, intentar resolver respecto al workspace
+                        resolvedPath = path.resolve(workspaceRoot, containerFilePath);
+                    }
+                    // Si la ruta construida no existe, buscar el archivo en el workspace
+                    if (!fs.existsSync(resolvedPath)) {
+                        // Buscar el archivo por nombre en el workspace
+                        const fileName = path.basename(containerFilePath);
+                        const found = findFileInWorkspace(workspaceRoot, fileName);
+                        if (found) {
+                            resolvedPath = found;
+                        }
+                    }
+                }
+                currentFile = resolvedPath;
+            }
+        }
+    }
+
+    // Función auxiliar para buscar el archivo por nombre en el workspace
+    function findFileInWorkspace(root: string, fileName: string): string | undefined {
+        const stack = [root];
+        while (stack.length) {
+            const dir = stack.pop();
+            if (!dir) continue;
+            const files = fs.readdirSync(dir);
+            for (const file of files) {
+                const fullPath = path.join(dir, file);
+                if (fs.statSync(fullPath).isDirectory()) {
+                    stack.push(fullPath);
+                } else if (file === fileName) {
+                    return fullPath;
                 }
             }
         }
+        return undefined;
     }
 
     // Aplicar diagnósticos a los archivos
