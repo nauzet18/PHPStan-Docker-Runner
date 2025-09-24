@@ -57,11 +57,6 @@
           "default": "nsign-v3",
           "description": "Nombre del contenedor Docker donde está PHPStan"
         },
-        "phpstan-docker-runner.showTerminal": {
-          "type": "boolean",
-          "default": true,
-          "description": "Mostrar una terminal integrada con la salida en tiempo real"
-        },
         "phpstan-docker-runner.workDirectory": {
           "type": "string",
           "default": "/netip/code", 
