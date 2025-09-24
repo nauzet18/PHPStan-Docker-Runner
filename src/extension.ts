@@ -12,20 +12,20 @@ let phpstanOutputChannel: vscode.OutputChannel;
 export function activate(context: vscode.ExtensionContext) {
     console.log('PHPStan Docker Runner está activo');
 
-    // Crear colección de diagnósticos
+    // Create diagnostics collection
     diagnosticCollection = vscode.languages.createDiagnosticCollection('phpstan');
     context.subscriptions.push(diagnosticCollection);
 
-    // Crear OutputChannel personalizado
+    // Create custom OutputChannel
     phpstanOutputChannel = vscode.window.createOutputChannel('PHPStan Docker Runner');
     context.subscriptions.push(phpstanOutputChannel);
 
-    // Comando para ejecutar PHPStan en todo el proyecto
+    // Command to run PHPStan on the whole project
     const runPhpstanCommand = vscode.commands.registerCommand('phpstan-docker-runner.runPhpstan', async () => {
         await runPhpstan();
     });
 
-    // Comando para ejecutar PHPStan en el archivo actual
+    // Command to run PHPStan on the current file
     const runPhpstanFileCommand = vscode.commands.registerCommand('phpstan-docker-runner.runPhpstanFile', async () => {
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor || !activeEditor.document.fileName.endsWith('.php')) {
@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
         await runPhpstan(activeEditor.document.fileName);
     });
 
-    // Comando para ejecutar PHPStan en el directorio actual
+    // Command to run PHPStan on the current directory
     const runPhpstanDirectoryCommand = vscode.commands.registerCommand('phpstan-docker-runner.runPhpstanDirectory', async (uri: vscode.Uri) => {
         const targetPath = uri ? uri.fsPath : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!targetPath) {
@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
         await runPhpstan(targetPath);
     });
 
-    // Auto-ejecutar PHPStan al guardar archivos PHP (si está habilitado)
+    // Auto-run PHPStan when saving PHP files (if enabled)
     const autoRunConfig = vscode.workspace.getConfiguration('phpstan-docker-runner').get<boolean>('autoRun', false);
     if (autoRunConfig) {
         const onSaveListener = vscode.workspace.onDidSaveTextDocument(async (document) => {
@@ -74,10 +74,10 @@ async function runPhpstan(targetPath?: string): Promise<void> {
             return;
         }
 
-        // Limpiar diagnósticos anteriores
+        // Clear previous diagnostics
         diagnosticCollection.clear();
 
-        // Mostrar indicador de progreso
+        // Show progress indicator
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Ejecutando PHPStan en Docker...",
@@ -85,15 +85,15 @@ async function runPhpstan(targetPath?: string): Promise<void> {
         }, async (progress) => {
             progress.report({ increment: 0, message: "Preparando comando..." });
 
-            // Construir comando PHPStan
-            let phpstanCommand = `${phpstanPath} analyse --level=${level}`;
+            // Build PHPStan command
+            let phpstanCommand = `${phpstanPath} analyse --no-progress --level=${level}`;
             
             if (configFile && fs.existsSync(path.join(workspaceRoot, configFile))) {
                 phpstanCommand += ` --configuration=${configFile}`;
             }
 
             if (targetPath) {
-                // Convertir ruta local a ruta del contenedor
+                // Convert local path to container path
                 const relativePath = path.relative(workspaceRoot, targetPath);
                 const containerPath = path.join(workDirectory, relativePath).replace(/\\/g, '/');
                 phpstanCommand += ` ${containerPath}`;
@@ -101,23 +101,23 @@ async function runPhpstan(targetPath?: string): Promise<void> {
                 phpstanCommand += ` ${workDirectory}`;
             }
 
-            // Comando Docker exec
+            // Docker exec command
             const dockerCommand = `docker exec ${containerName} ${phpstanCommand}`;
 
             progress.report({ increment: 30, message: "Lanzando ejecución..." });
 
-            // Ya no se crea una terminal integrada, la salida va solo al OutputChannel
+            // No integrated terminal is created, output goes only to OutputChannel
 
             progress.report({ increment: 50, message: "Analizando y recopilando diagnósticos..." });
 
             try {
-                // Ejecutamos en paralelo otra llamada con salida capturable para diagnósticos
+                // Run another call in parallel with capturable output for diagnostics
                 const { stdout, stderr } = await execAsync(dockerCommand, {
                     cwd: workspaceRoot,
-                    timeout: 300000 // 5 minutos timeout
+                    timeout: 600000 // 10 min timeout
                 });
 
-                // Mostrar la salida en el OutputChannel personalizado
+                // Show output in custom OutputChannel
                 phpstanOutputChannel.clear();
                 phpstanOutputChannel.appendLine('Comando ejecutado: ' + dockerCommand);
                 phpstanOutputChannel.appendLine('--- STDOUT ---');
@@ -130,11 +130,11 @@ async function runPhpstan(targetPath?: string): Promise<void> {
 
                 progress.report({ increment: 100, message: "Procesando resultados..." });
 
-                // Procesar la salida de PHPStan, pasando targetPath
+                // Process PHPStan output, passing targetPath
                 await processPhpstanOutput(stdout, stderr, workspaceRoot, workDirectory, targetPath);
 
             } catch (error: any) {
-                // Mostrar la salida en el OutputChannel personalizado también en caso de error
+                // Show output in custom OutputChannel also in case of error
                 phpstanOutputChannel.clear();
                 phpstanOutputChannel.appendLine('Comando ejecutado: ' + dockerCommand);
                 phpstanOutputChannel.appendLine('--- STDOUT ---');
@@ -146,7 +146,7 @@ async function runPhpstan(targetPath?: string): Promise<void> {
                 phpstanOutputChannel.show(true);
 
                 if (error.code === 1) {
-                    // PHPStan encontró errores (código de salida 1)
+                    // PHPStan found errors (exit code 1)
                     await processPhpstanOutput(error.stdout || '', error.stderr || '', workspaceRoot, workDirectory, targetPath);
                 } else {
                     throw error;
@@ -163,10 +163,10 @@ async function runPhpstan(targetPath?: string): Promise<void> {
 async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoot: string, workDirectory: string, targetPath?: string): Promise<void> {
     const diagnostics: { [file: string]: vscode.Diagnostic[] } = {};
 
-    // Parsear la salida de PHPStan
+    // Parse PHPStan output
     const lines = stdout.split('\n');
     let currentFile = '';
-    // Si el análisis se ha lanzado sobre un archivo concreto, usarlo directamente
+    // If the analysis was run on a specific file, use it directly
     let knownFilePath: string | undefined;
     if (targetPath && typeof targetPath === 'string' && targetPath.endsWith('.php') && fs.existsSync(targetPath)) {
         knownFilePath = targetPath;
@@ -175,15 +175,15 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
     for (const line of lines) {
         if (line.trim() === '') continue;
 
-        // Detectar separador de archivo
+        // Detect file separator
         if (line.includes('------') && line.includes('------')) {
             continue;
         }
 
-        // Detectar línea de error
+        // Detect error line
         const errorMatch = line.match(/^\s*(\d+)\s+(.+)$/);
         if (errorMatch) {
-            const lineNumber = parseInt(errorMatch[1]) - 1; // Convertir a índice 0-based
+            const lineNumber = parseInt(errorMatch[1]) - 1; // Convert to 0-based index
             const message = errorMatch[2].trim();
 
             if (currentFile && lineNumber >= 0) {
@@ -201,29 +201,29 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
                 diagnostics[currentFile].push(diagnostic);
             }
         } else if (line.includes('.php')) {
-            // Es un archivo PHP - convertir ruta del contenedor a ruta local
+            // It's a PHP file - convert container path to local path
             const fileMatch = line.match(/([^\s]+\.php)/);
             if (fileMatch) {
                 let containerFilePath = fileMatch[1];
                 let resolvedPath = '';
 
-                // Si tenemos la ruta conocida (comando sobre archivo actual), usarla directamente
+                // If we have the known path (command on current file), use it directly
                 if (knownFilePath) {
                     resolvedPath = knownFilePath;
                 } else if (path.isAbsolute(containerFilePath) && fs.existsSync(containerFilePath)) {
                     resolvedPath = containerFilePath;
                 } else {
-                    // Si la ruta empieza por el workDirectory, construir la ruta relativa
+                    // If the path starts with workDirectory, build the relative path
                     if (containerFilePath.startsWith(workDirectory)) {
                         const relativePath = containerFilePath.substring(workDirectory.length).replace(/^\//, '');
                         resolvedPath = path.resolve(workspaceRoot, relativePath);
                     } else {
-                        // Si no, intentar resolver respecto al workspace
+                        // Otherwise, try to resolve relative to workspace
                         resolvedPath = path.resolve(workspaceRoot, containerFilePath);
                     }
-                    // Si la ruta construida no existe, buscar el archivo en el workspace
+                    // If the built path does not exist, search for the file in the workspace
                     if (!fs.existsSync(resolvedPath)) {
-                        // Buscar el archivo por nombre en el workspace
+                        // Search for the file by name in the workspace
                         const fileName = path.basename(containerFilePath);
                         const found = findFileInWorkspace(workspaceRoot, fileName, targetPath);
                         if (found) {
@@ -236,7 +236,7 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
         }
     }
 
-    // Función auxiliar para buscar el archivo por nombre en el workspace o en el targetPath si es directorio
+    // Helper function to search for the file by name in the workspace or in targetPath if it's a directory
     function findFileInWorkspace(root: string, fileName: string, searchDir?: string): string | undefined {
         let searchRoot = root;
         if (searchDir && fs.existsSync(searchDir) && fs.statSync(searchDir).isDirectory()) {
@@ -259,13 +259,13 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
         return undefined;
     }
 
-    // Aplicar diagnósticos a los archivos
+    // Apply diagnostics to files
     for (const [filePath, fileDiagnostics] of Object.entries(diagnostics)) {
         const uri = vscode.Uri.file(filePath);
         diagnosticCollection.set(uri, fileDiagnostics);
     }
 
-    // Mostrar resumen
+    // Show summary
     const totalErrors = Object.values(diagnostics).reduce((sum, diags) => sum + diags.length, 0);
     if (totalErrors > 0) {
         vscode.window.showWarningMessage(`PHPStan encontró ${totalErrors} problemas en ${Object.keys(diagnostics).length} archivos`);
@@ -273,12 +273,12 @@ async function processPhpstanOutput(stdout: string, stderr: string, workspaceRoo
         vscode.window.showInformationMessage('PHPStan no encontró problemas');
     }
 
-    // Mostrar errores de Docker si los hay
+    // Show Docker errors if any
     if (stderr) {
         console.error('Docker stderr:', stderr);
     }
 }
 
 export function deactivate() {
-    // Limpiar recursos si es necesario
+    // Clean up resources if needed
 }
