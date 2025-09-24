@@ -7,6 +7,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 let diagnosticCollection: vscode.DiagnosticCollection;
+let phpstanOutputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('PHPStan Docker Runner está activo');
@@ -14,6 +15,10 @@ export function activate(context: vscode.ExtensionContext) {
     // Crear colección de diagnósticos
     diagnosticCollection = vscode.languages.createDiagnosticCollection('phpstan');
     context.subscriptions.push(diagnosticCollection);
+
+    // Crear OutputChannel personalizado
+    phpstanOutputChannel = vscode.window.createOutputChannel('PHPStan Docker Runner');
+    context.subscriptions.push(phpstanOutputChannel);
 
     // Comando para ejecutar PHPStan en todo el proyecto
     const runPhpstanCommand = vscode.commands.registerCommand('phpstan-docker-runner.runPhpstan', async () => {
@@ -119,12 +124,34 @@ async function runPhpstan(targetPath?: string): Promise<void> {
                     timeout: 300000 // 5 minutos timeout
                 });
 
+                // Mostrar la salida en el OutputChannel personalizado
+                phpstanOutputChannel.clear();
+                phpstanOutputChannel.appendLine('Comando ejecutado: ' + dockerCommand);
+                phpstanOutputChannel.appendLine('--- STDOUT ---');
+                phpstanOutputChannel.append(stdout);
+                if (stderr) {
+                    phpstanOutputChannel.appendLine('\n--- STDERR ---');
+                    phpstanOutputChannel.append(stderr);
+                }
+                phpstanOutputChannel.show(true);
+
                 progress.report({ increment: 100, message: "Procesando resultados..." });
 
                 // Procesar la salida de PHPStan
                 await processPhpstanOutput(stdout, stderr, workspaceRoot, workDirectory);
 
             } catch (error: any) {
+                // Mostrar la salida en el OutputChannel personalizado también en caso de error
+                phpstanOutputChannel.clear();
+                phpstanOutputChannel.appendLine('Comando ejecutado: ' + dockerCommand);
+                phpstanOutputChannel.appendLine('--- STDOUT ---');
+                phpstanOutputChannel.append(error.stdout || '');
+                if (error.stderr) {
+                    phpstanOutputChannel.appendLine('\n--- STDERR ---');
+                    phpstanOutputChannel.append(error.stderr);
+                }
+                phpstanOutputChannel.show(true);
+
                 if (error.code === 1) {
                     // PHPStan encontró errores (código de salida 1)
                     await processPhpstanOutput(error.stdout || '', error.stderr || '', workspaceRoot, workDirectory);
