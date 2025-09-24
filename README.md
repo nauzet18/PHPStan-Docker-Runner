@@ -1,15 +1,24 @@
 # PHPStan Docker Runner
 
-Una extensión para Cursor/VS Code que permite ejecutar PHPStan en un contenedor Docker existente.
+Una extensión para Cursor/VS Code que permite ejecutar PHPStan en un contenedor Docker existente. La salida de PHPStan se muestra en un OutputChannel personalizado y los problemas detectados aparecen en la sección de Problemas del editor, siendo totalmente clicables.
 
 ## Características
 
 - 🐳 Ejecuta PHPStan en un contenedor Docker existente
 - 📁 Análisis de archivos individuales, directorios o todo el proyecto
 - ⚙️ Configuración personalizable del contenedor y mapping de carpetas
-- 🔍 Integración con el editor para mostrar problemas
+- 🔍 Integración con el editor para mostrar problemas clicables
 - 🚀 Comandos rápidos desde el menú contextual
 - 🔄 Auto-ejecución al guardar archivos PHP (opcional)
+- 📤 Salida de PHPStan en un OutputChannel personalizado
+## Salida y visualización
+
+La salida de PHPStan se muestra en un OutputChannel propio dentro de VS Code, permitiendo revisar el resultado completo del análisis. Además, los problemas detectados por PHPStan se listan en la sección de "Problemas" del editor y puedes hacer clic en ellos para ir directamente al archivo y línea correspondiente.
+
+## Optimización de búsqueda
+
+Cuando ejecutas el análisis sobre un directorio, la extensión optimiza la búsqueda de archivos para mostrar los problemas solo en ese ámbito, mejorando el rendimiento y la precisión.
+
 
 ## Instalación
 
@@ -39,7 +48,7 @@ La extensión se puede configurar a través de la configuración de Cursor/VS Co
 
 ### Comandos disponibles
 
-1. **Ejecutar PHPStan en Docker** - Analiza todo el proyecto
+1. **Ejecutar PHPStan en todo el proyecto** - Analiza todo el proyecto
 2. **Ejecutar PHPStan en archivo actual** - Analiza solo el archivo PHP abierto
 3. **Ejecutar PHPStan en directorio actual** - Analiza el directorio seleccionado (menú contextual)
 

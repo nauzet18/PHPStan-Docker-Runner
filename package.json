@@ -35,7 +35,7 @@
     "commands": [
       {
         "command": "phpstan-docker-runner.runPhpstan",
-        "title": "Ejecutar PHPStan en Docker",
+        "title": "Ejecutar PHPStan en todo el proyecto",
         "category": "PHPStan"
       },
       {
